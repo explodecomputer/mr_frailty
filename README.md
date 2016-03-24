@@ -1,1 +1,1 @@
-# mr_frailty
+# Sensitivity analysis to account for frailty effects in MR
