@@ -30,6 +30,8 @@
 # snp_effect_allele
 
 
+source("R/functions.R")
+
 
 pd_incidence <- function(age, ...)
 {
