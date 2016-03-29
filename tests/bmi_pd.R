@@ -86,7 +86,7 @@ bmi_snps_mean <- 25
 bmi_snps_sd <- 4.18
 
 
-nsim <- 3
+nsim <- 1000
 l1 <- list()
 l2 <- list()
 for (i in 1:nsim)
@@ -108,3 +108,5 @@ for (i in 1:nsim)
 	l2[[i]] <- coefficients(b)[2,]
 
 }
+
+save(l1, l2, file="tests/res.RData")
