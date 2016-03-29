@@ -81,7 +81,7 @@ bmi_survival <- function(age, bmi)
 
 
 demog <- read.csv("data-raw/pd_demographics.csv")
-ages <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
+age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
 bmi_snps <- read.table("data-raw/bmi_2015_clumped.txt", he=T)
 bmi_snps$b <- bmi_snps$b * 4.18
 bmi_snps_mean <- 25
