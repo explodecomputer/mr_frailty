@@ -30,12 +30,96 @@
 # snp_effect_allele
 
 
-source("R/functions.R")
+
+source("~/repo/mr_frailty/R/functions.R")
 library(dplyr)
+library(systemfit)
+
+
+main <- function()
+{
+	demog <- read.csv("~/repo/mr_frailty/data-raw/pd_demographics.csv")
+	age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
+	bmi_snps <- read.table("~/repo/mr_frailty/data-raw/bmi_2015_clumped.txt", he=T)
+	bmi_snps$b <- bmi_snps$b * 4.18
+	bmi_snps_mean <- 25
+	bmi_snps_sd <- 4.18
+
+
+	parameters <- expand.grid(sim = 1:1000)
+
+	# Parallel
+	arguments <- commandArgs(T)
+	jid <- "all"
+	outdir <- "./"
+	if(length(arguments) > 0)
+	{
+		jid <- as.numeric(arguments[1])
+		splits <- as.numeric(arguments[2])
+		outdir <- arguments[3]
+		stopifnot(all(!is.na(jid), !is.na(splits), !is.na(outdir)))
+
+		first <- (jid - 1) * splits + 1
+		last <- min(nrow(parameters), jid * splits)
+		parameters <- parameters[first:last, , drop=FALSE]
+	}
+
+	# Set output file
+	outfile <- paste(outdir, "/results", jid, ".RData", sep="")
+	message("Running ", jid, ": ", nrow(parameters), " rows")
+	message("Saving in ", outfile)
+
+
+	l1 <- list()
+	l2 <- list()
+	l3 <- list()
+	for (i in 1:nrow(parameters))
+	{
+		message(i)
+
+		dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
+		dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
+		snps <- simulate_snps(nrow(dat), bmi_snps$Freq1.Hapmap)
+		dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b, bmi_snps_mean, bmi_snps_sd)
+		dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
+		dat$grs <- snps %*% bmi_snps$b
+		s <- sample_cases_controls(dat, age_summary)
+
+		a <- summary(glm(cc ~ bmi, subset(s), family="binomial"))
+		b <- summary(glm(cc ~ grs, subset(s), family="binomial"))
+		c <- summary(systemfit(cc ~ bmi, "2SLS", inst = ~ grs, data = s))
+		l1[[i]] <- coefficients(a)[2,]
+		l2[[i]] <- coefficients(b)[2,]
+		l3[[i]] <- coefficients(c)[2,]
+	}
+
+	l1 <- as.data.frame(do.call(rbind, l1))
+	names(l1) <- c("beta", "se", "tval", "pval")
+	l1$sim <- parameters$sim
+	l1$test <- "obs"
+
+	l2 <- as.data.frame(do.call(rbind, l2))
+	names(l2) <- c("beta", "se", "tval", "pval")
+	l2$sim <- parameters$sim
+	l2$test <- "grs"
+
+	l3 <- as.data.frame(do.call(rbind, l3))
+	names(l3) <- c("beta", "se", "tval", "pval")
+	l3$sim <- parameters$sim
+	l3$test <- "2sls"
+
+	res <- rbind(l1, l2, l3)
+
+	save(res, file=outfile)
+
+}
+
+
+
 
 pd_incidence <- function(age, ...)
 {
-	pd_inc <- read.table("data-raw/pd_incidence.txt", he=T)
+	pd_inc <- read.table("~/repo/mr_frailty/data-raw/pd_incidence.txt", he=T)
 	pd_inc$age <- (pd_inc$age_low + pd_inc$age_upp) / 2
 	pd_inc$n <- pd_inc$personyears / ((pd_inc$age_upp + pd_inc$age_low) / 2)
 	pd_inc$p <- pd_inc$cases / pd_inc$n
@@ -48,7 +132,7 @@ pd_incidence <- function(age, ...)
 
 bmi_survival <- function(age, bmi)
 {
-	hr_summary <- read.table("data-raw/bmi_hr.txt", he=T)
+	hr_summary <- read.table("~/repo/mr_frailty/data-raw/bmi_hr.txt", he=T)
 	hr_summary$lhr <- log(hr_summary$hr)
 	hr_summary$lhr_se <- (log(hr_summary$ci_upp) - log(hr_summary$ci_low)) / 3.92
 	
@@ -78,37 +162,4 @@ bmi_survival <- function(age, bmi)
 # 	return(survival)
 # }
 
-
-
-demog <- read.csv("data-raw/pd_demographics.csv")
-age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
-bmi_snps <- read.table("data-raw/bmi_2015_clumped.txt", he=T)
-bmi_snps$b <- bmi_snps$b * 4.18
-bmi_snps_mean <- 25
-bmi_snps_sd <- 4.18
-
-
-nsim <- 1000
-l1 <- list()
-l2 <- list()
-for (i in 1:nsim)
-{
-	message(i)
-
-	dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
-	dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
-	snps <- simulate_snps(nrow(dat), bmi_snps$Freq1.Hapmap)
-	dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b, bmi_snps_mean, bmi_snps_sd)
-	dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
-	dat$grs <- snps %*% bmi_snps$b
-	s <- sample_cases_controls(dat, age_summary)
-
-	a <- summary(glm(cc ~ bmi, subset(s), family="binomial"))
-	b <- summary(glm(cc ~ grs, subset(s), family="binomial"))
-
-	l1[[i]] <- coefficients(a)[2,]
-	l2[[i]] <- coefficients(b)[2,]
-
-}
-
-save(l1, l2, file="tests/res.RData")
+main()

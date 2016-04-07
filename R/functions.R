@@ -243,3 +243,5 @@ sample_cases_controls <- function(dat, age_summary)
 	temp0 <- temp0[sample(1:nrow(temp0), age_summary$gn[age_summary$cc==0]), ]
 	return(rbind(temp1, temp0))
 }
+
+
