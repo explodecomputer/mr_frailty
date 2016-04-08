@@ -41,7 +41,7 @@ main <- function()
 	demog <- read.csv("~/repo/mr_frailty/data-raw/pd_demographics.csv")
 	age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
 	bmi_snps <- read.table("~/repo/mr_frailty/data-raw/bmi_2015_clumped.txt", he=T)
-	bmi_snps$b <- bmi_snps$b * 4.18
+	bmi_snps$b <- bmi_snps$b
 	bmi_snps_mean <- 25
 	bmi_snps_sd <- 4.18
 
@@ -73,6 +73,7 @@ main <- function()
 	l1 <- list()
 	l2 <- list()
 	l3 <- list()
+	l4 <- list()
 	for (i in 1:nrow(parameters))
 	{
 		message(i)
@@ -80,17 +81,22 @@ main <- function()
 		dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
 		dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
 		snps <- simulate_snps(nrow(dat), bmi_snps$Freq1.Hapmap)
-		dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b, bmi_snps_mean, bmi_snps_sd)
+		dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd)
 		dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
 		dat$grs <- snps %*% bmi_snps$b
-		s <- sample_cases_controls(dat, age_summary)
+		index <- sample_cases_controls(dat, age_summary)
 
-		a <- summary(glm(cc ~ bmi, subset(s), family="binomial"))
-		b <- summary(glm(cc ~ grs, subset(s), family="binomial"))
-		c <- summary(systemfit(cc ~ bmi, "2SLS", inst = ~ grs, data = s))
+		a <- summary(glm(cc ~ bmi, dat[index,], family="binomial"))
+		b <- summary(glm(cc ~ grs, dat[index,], family="binomial"))
+		c <- summary(systemfit(cc ~ bmi, "2SLS", inst = ~ grs, data = dat[index,]))
+
 		l1[[i]] <- coefficients(a)[2,]
 		l2[[i]] <- coefficients(b)[2,]
 		l3[[i]] <- coefficients(c)[2,]
+
+		ss <- get_summary_stats(dat, snps, index)
+		mres <- do_mr(bmi_snps$b, ss$b, bmi_snps$se, ss$se)
+		l4[[i]] <- data.frame(beta = mres$b, se = mres$se, tval = NA, pval = mres$pval, sim = parameters$sim[i], test = mres$method)
 	}
 
 	l1 <- as.data.frame(do.call(rbind, l1))
@@ -108,7 +114,9 @@ main <- function()
 	l3$sim <- parameters$sim
 	l3$test <- "2sls"
 
-	res <- rbind(l1, l2, l3)
+	l4 <- bind_rows(l4)
+
+	res <- rbind(l1, l2, l3, l4)
 
 	save(res, file=outfile)
 

@@ -228,20 +228,66 @@ get_age_summary <- function(demog, ncases, ncontrol, case_mean, control_mean, ca
 
 #' sample cases controls
 #'
-#' <full description>
-#'
 #' @param dat <what param does>
 #' @param age_summary <what param does>
 #'
 #' @export
-#' @return data frame
+#' @return array
 sample_cases_controls <- function(dat, age_summary)
 {
+	dat$id <- 1:nrow(dat)
 	temp1 <- subset(dat, alive==1 & cc==1)
 	temp1 <- temp1[sample(1:nrow(temp1), age_summary$gn[age_summary$cc==1]), ]
 	temp0 <- subset(dat, alive==1 & cc==0)
 	temp0 <- temp0[sample(1:nrow(temp0), age_summary$gn[age_summary$cc==0]), ]
-	return(rbind(temp1, temp0))
+	return(sort(rbind(temp1, temp0)$id))
 }
 
 
+
+#' Get summary stats from dat and snps
+#'
+#' @param dat <what param does>
+#' @param snps <what param does>
+#' @param index <what param does>
+#'
+#' @export
+#' @return data frame
+get_summary_stats <- function(dat, snps, index)
+{
+	d <- dat[index, ]
+	s <- snps[index, ]
+
+	b <- array(0, ncol(s))
+	se <- array(0, ncol(s))
+	pval <- array(0, ncol(s))
+	for(i in 1:ncol(s))
+	{
+		message(i)
+		mod <- summary(lm(d$cc ~ s[,i], family="binomial"))
+		b[i] <- coefficients(mod)[2,1]
+		se[i] <- coefficients(mod)[2,2]
+		pval[i] <- coefficients(mod)[2,4]
+	}
+	return(data.frame(b=b, se=se, pval=pval))
+}
+
+
+do_mr <- function(exposure_effects, outcome_effects, exposure_se, outcome_se)
+{
+	require(TwoSampleMR)
+
+	dat <- data.frame(
+		id.exposure = "exposure",
+		id.outcome = "outcome",
+		exposure = "exposure",
+		outcome = "outcome",
+		beta.exposure = exposure_effects,
+		beta.outcome = outcome_effects,
+		se.exposure = exposure_se,
+		se.outcome = outcome_se,
+		mr_keep = TRUE
+	)
+
+	return(mr(dat))
+}

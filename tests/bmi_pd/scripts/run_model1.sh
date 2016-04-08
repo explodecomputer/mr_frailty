@@ -18,8 +18,8 @@ if [ -n "${1}" ]; then
 fi
 
 i=${PBS_ARRAYID}
-splits=10
-outdir="${HOME}/repo/mr_frailty/tests/bmi_pd/results"
+splits=2
+outdir="${HOME}/repo/mr_frailty/tests/bmi_pd/scratch"
 
-R --no-save --args ${i} ${splits} ${outdir} < ${HOME}/repo/mr_frailty/tests/bmi_pd/scripts/bmi_pd.R
+R --no-save --args ${i} ${splits} ${outdir} < ${HOME}/repo/mr_frailty/tests/bmi_pd/scripts/model1.R
 

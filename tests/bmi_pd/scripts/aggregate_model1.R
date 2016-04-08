@@ -1,9 +1,9 @@
 library(dplyr)
 
 arguments <- commandArgs(T)
-splits <- as.numeric(arguments[1])
-outdir <- arguments[2]
-savefile <- arguments[3]
+splits <- 100
+outdir <- "~/repo/mr_frailty/tests/bmi_pd/scratch"
+savefile <- "~/repo/mr_frailty/tests/bmi_pd/results/model1"
 
 l <- list()
 for(i in 1:splits)
@@ -19,5 +19,5 @@ for(i in 1:splits)
 	}
 }
 
-parameters <- rbind_all(l)
-save(parameters, file = savefile)
+res <- rbind_all(l)
+save(res, file = savefile)
