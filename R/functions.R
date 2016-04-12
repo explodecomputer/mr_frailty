@@ -44,7 +44,7 @@ simulate_snps <- function(n, snp_freq)
 #'
 #' @export
 #' @return vector
-simulate_exposure <- function(n, snps, snp_beta, exposure_mean, exposure_sd)
+simulate_exposure <- function(n, snps, snp_beta, exposure_mean, exposure_sd, lb=-Inf, ub=Inf)
 {
 	grs <- as.numeric(snps %*% snp_beta)
 	v_grs <- var(grs)
@@ -52,6 +52,11 @@ simulate_exposure <- function(n, snps, snp_beta, exposure_mean, exposure_sd)
 	grs <- scale(grs) * sqrt(v_grs / (v_grs + v_resid))
 	resid <- rnorm(n, 0, sqrt(v_resid / (v_grs + v_resid)))
 	exposure <- as.numeric(scale(grs + resid) * exposure_sd + exposure_mean)
+
+	dist <- sort(urnorm(n, exposure_mean, exposure_sd, lb, ub))
+	ord <- order(exposure)
+	exposure[ord] <- dist
+
 	return(exposure)
 }
 
@@ -105,12 +110,12 @@ plot_quantiles <- function(exposure, outcome, exposure_breaks=10, mediator=NULL,
 			d$mediator <- mediator
 		}
 
-		res <- d %>% group_by(cuts, mediator) %>%
-			summarise(prob = mean(outcome), prob_sd = sd(outcome)/n())
+		res <- d %>% dplyr::group_by(cuts, mediator) %>%
+			dplyr::summarise(prob = mean(outcome), prob_sd = sd(outcome)/n())
 
 
 		p <- ggplot(res, aes(x=cuts, y=prob, colour=as.factor(mediator), group=as.factor(mediator))) +
-			geom_errorbar(aes(ymin=prob - prob_sd * 1.96, ymax=prob + prob_sd * 1.96), width=0) +	
+			geom_errorbar(aes(ymin=pmax(prob - prob_sd * 1.96, 0), ymax=pmin(prob + prob_sd * 1.96, 1)), width=0) +	
 			stat_summary(fun.y=identity, geom="line") +
 			geom_point() +
 			theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
@@ -119,12 +124,12 @@ plot_quantiles <- function(exposure, outcome, exposure_breaks=10, mediator=NULL,
 
 	} else {
 
-		res <- d %>% group_by(cuts) %>%
-			summarise(prob = mean(outcome), prob_sd = sd(outcome)/n())
+		res <- d %>% dplyr::group_by(cuts) %>%
+			dplyr::summarise(prob = mean(outcome), prob_sd = sd(outcome)/n())
 
 		p <- ggplot(res, aes(x=cuts, y=prob)) +
 			geom_point() +
-			geom_errorbar(aes(ymin=prob - prob_sd * 1.96, ymax=prob + prob_sd * 1.96), width=0) +
+			geom_errorbar(aes(ymin=pmax(prob - prob_sd * 1.96, 0), ymax=pmin(prob + prob_sd * 1.96, 1)), width=0) +
 			theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5)) +
 			labs(x=xlab, y=ylab)
 
