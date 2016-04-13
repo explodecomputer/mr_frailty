@@ -1,0 +1,113 @@
+---
+title: Simulations to assess the contribution of survival bias to protective associations of body mass index and Parkinson's disease
+date: "`r Sys.Date()`"
+output: pdf_document
+bibliography: bmi_pd.bib
+---
+
+```{r, echo=FALSE}
+opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+```
+
+```{r, echo=FALSE}
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(pander))
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(sn))
+```
+
+
+## Background
+
+Two sample Mendelian randomisation (MR) analysis has shown empirically that there is an effect of increasing body mass index (BMI) on reduced risk of Parkinson's disease (PD). One mechanism that this association could manifest without there being any underlying biological link is if individuals with high BMI have higher mortality rates, and therefore those diagnosed with PD are more likely to harbour alleles that are associated with lower BMI. 
+
+This analysis seeks to simulate a population in which mortality is related to BMI, and PD is unrelated to BMI. MR is then performed on the sample to estimate the extent to which survival bias (or frailty) can induce an association between BMI and PD. This frailty effect is then compared against the empirical association obtained from MR.
+
+
+## Simulation strategy
+
+The model looks like this:
+
+```
+exposure ~ snp(s)
+mortality ~ age + exposure
+outcome ~ age
+```
+
+The simulation is performed as follows:
+
+### 1. Simulate population
+
+Simulate a large population ($n=500000$) where each individual has 66 BMI associated SNPs (Locke et al), PD status, age values, BMI values, and alive/dead status.
+
+#### Age 
+
+The age values are uniformly distributed from 40 to 100
+
+#### BMI SNPs
+
+BMI SNPs are generated as a function of their allele frequencies, such that for individual $i$ at SNP $j$ their genotype value is $x_{ij} ~ Binom(2, p_{j})$ where $p_{j}$ is the allele frequency of SNP $j$.
+
+#### BMI values
+
+The BMI values are a function of the BMI SNPs, such that
+
+$$
+bmi_{i} = \sum_{j} x_{ij} \beta_{j} + e_{j}
+$$
+
+where $e_{j} \sim N(0, \frac{V_e}{V_e + V_g})$, where the genetic variance $V_g = \sum_{j} 2p_{j}(1-p_{j})\beta_j^2$ and residual variance $V_e = V_p - V_g$. The phenotypic variance, $V_p$, is the variance of the trait that was used to obtain the effect sizes.
+
+#### PD status
+
+PD status was simulated as a function of age, based on age related incidence obtained from Driver et al.
+
+#### Alive/dead status 
+
+Alive/dead status was a function of age and BMI values. The baseline survival function was generated from the Gompertz-Makeham law of mortality, with age related hazard function
+
+$$
+h(t) = a \exp(bt) + \lambda
+$$
+
+which has CDF
+
+$$
+F(t) = 1 - \exp(-\lambda t-\frac{a}{b}(e^{b t}-1))
+$$
+
+The influence of BMI on mortality was modelled as 
+
+. Survival was modelled as:
+
+$$
+S(t) = 1 - F(t) = -\exp(-\lambda t-\frac{a}{b}(e^{b t}-1))
+$$
+
+The influence of BMI on survival was modelled as 
+
+$$
+S(t)
+
+
+
+2. simulate influence of BMI on mortality
+3. simulate age related incidence of PD that is unrelated to BMI
+4. perform MR using surviving population
+
+
+## Model 1
+
+BMI mortality curves are from [http://www.nejm.org/doi/full/10.1056/NEJMoa1000367](http://www.nejm.org/doi/full/10.1056/NEJMoa1000367)
+
+This has a J-shaped association - both high and low BMI increase mortality
+
+
+## Model 2
+
+BMI has 5 times increase on mortality if BMI > 27. This is a control model.
+
+
+
