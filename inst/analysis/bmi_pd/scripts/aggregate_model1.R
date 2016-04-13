@@ -2,7 +2,7 @@ library(dplyr)
 
 arguments <- commandArgs(T)
 splits <- 100
-outdir <- "~/repo/mr_frailty/inst/analysis/bmi_pd/scratch"
+outdir <- "~/repo/mr_frailty/inst/analysis/bmi_pd/scratch1"
 savefile <- "~/repo/mr_frailty/inst/analysis/bmi_pd/results/model1.RData"
 
 l <- list()
