@@ -19,7 +19,7 @@ fi
 
 i=${PBS_ARRAYID}
 splits=10
-outdir="${HOME}/repo/mr_frailty/inst/analysis/bmi_pd/scratch"
+outdir="${HOME}/repo/mr_frailty/inst/analysis/bmi_pd/scratch1"
 
 R --no-save --args ${i} ${splits} ${outdir} < ${HOME}/repo/mr_frailty/inst/analysis/bmi_pd/scripts/model1.R
 

@@ -81,7 +81,7 @@ main <- function()
 		dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
 		dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
 		snps <- simulate_snps(nrow(dat), bmi_snps$Freq1.Hapmap)
-		dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd)
+		dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd, lb=15,ub=60)
 		dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
 		dat$grs <- snps %*% bmi_snps$b
 		index <- sample_cases_controls(dat, age_summary)
