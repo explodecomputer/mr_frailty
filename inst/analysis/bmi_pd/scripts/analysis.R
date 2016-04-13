@@ -3,10 +3,10 @@
 library(ggplot2)
 library(dplyr)
 
-load("~/repo/mr_frailty/tests/bmi_pd/results/model1.RData")
+load("~/repo/mr_frailty/inst/analysis/bmi_pd/results/model1.RData")
 res1 <- res
 res1$model <- "model1"
-load("~/repo/mr_frailty/tests/bmi_pd/results/model2.RData")
+load("~/repo/mr_frailty/inst/analysis/bmi_pd/results/model2.RData")
 res2 <- res
 res2$model <- "model2"
 res <- rbind(res1, res2)
@@ -29,7 +29,7 @@ geom_vline(data=subset(dat, test != "grs"), aes(xintercept=b, colour=model)) +
 geom_vline(xintercept=0, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
 scale_fill_brewer(type="qual")
-ggsave("~/repo/mr_frailty/tests/bmi_pd/images/method_comparison_both_models.pdf")
+ggsave("~/repo/mr_frailty/inst/analysis/bmi_pd/images/method_comparison_both_models.pdf")
 
 
 ## ---- method_comparisons_model1 ----
@@ -42,7 +42,7 @@ geom_vline(data=subset(dat, test != "grs" & model == "model1"), aes(xintercept=b
 geom_vline(xintercept=0, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
 scale_fill_brewer(type="qual")
-ggsave("~/repo/mr_frailty/tests/bmi_pd/images/method_comparison_model1.pdf")
+ggsave("~/repo/mr_frailty/inst/analysis/bmi_pd/images/method_comparison_model1.pdf")
 
 
 
@@ -75,7 +75,7 @@ coord_flip() +
 scale_colour_brewer(type="qual") +
 theme_bw() +
 labs(x="", y="Odds ratio and 95% confidence intervals")
-ggsave("~/repo/mr_frailty/tests/bmi_pd/images/empircal.pdf")
+ggsave("~/repo/mr_frailty/inst/analysis/bmi_pd/images/empircal.pdf")
 
 
 ## ---- example_simulation ----
