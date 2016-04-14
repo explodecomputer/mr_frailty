@@ -2,7 +2,7 @@ library(dplyr)
 
 
 splits <- 100
-outdir <- "../scratch"
+outdir <- "../scratch2"
 savefile <- "../results/model2.RData"
 
 l <- list()
