@@ -2,11 +2,12 @@
 
 library(ggplot2)
 library(dplyr)
+library(systemfit)
 
-load("~/repo/mr_frailty/inst/analysis/bmi_pd/results/model1.RData")
+load("../results/model1.RData")
 res1 <- res
 res1$model <- "model1"
-load("~/repo/mr_frailty/inst/analysis/bmi_pd/results/model2.RData")
+load("../results/model2.RData")
 res2 <- res
 res2$model <- "model2"
 res <- rbind(res1, res2)
@@ -20,31 +21,31 @@ levels(res_plot$test) <- c("2SLS", "IVW", "MR Egger", "Obs assoc")
 
 ## ---- method_comparisons ----
 
-dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta))
+mc_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta))
 
 
 ggplot(subset(res_plot, test != "grs"), aes(x=beta)) +
 geom_density(aes(fill=model), alpha=0.2) +
-geom_vline(data=subset(dat, test != "grs"), aes(xintercept=b, colour=model)) +
+geom_vline(data=subset(mc_dat, test != "grs"), aes(xintercept=b, colour=model)) +
 geom_vline(xintercept=0, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
 scale_fill_brewer(type="qual")
-ggsave("~/repo/mr_frailty/inst/analysis/bmi_pd/images/method_comparison_both_models.pdf")
+# ggsave("../images/method_comparison_both_models.pdf")
 
 
 ## ---- method_comparisons_model1 ----
 
-dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta))
+mc1_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta))
+mc1_dat$pval <- pnorm(abs(mc1_dat$b / mc1_dat$se), low=FALSE)
 
 ggplot(subset(res_plot, test != "grs" & model == "model1"), aes(x=beta)) +
 geom_density(alpha=0.2) +
-geom_vline(data=subset(dat, test != "grs" & model == "model1"), aes(xintercept=b)) +
+geom_vline(data=subset(mc1_dat, test != "grs" & model == "model1"), aes(xintercept=b)) +
 geom_vline(xintercept=0, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
-scale_fill_brewer(type="qual")
-ggsave("~/repo/mr_frailty/inst/analysis/bmi_pd/images/method_comparison_model1.pdf")
-
-
+scale_fill_brewer(type="qual") +
+labs(x="Estimate (log[OR] per kg/m2)")
+# ggsave("../images/method_comparison_model1.pdf")
 
 
 ## ---- empirical_results ----
@@ -74,17 +75,44 @@ facet_grid(test ~ .) +
 coord_flip() +
 scale_colour_brewer(type="qual") +
 theme_bw() +
-labs(x="", y="Odds ratio and 95% confidence intervals")
-ggsave("~/repo/mr_frailty/inst/analysis/bmi_pd/images/empircal.pdf")
+labs(x="", y="Odds ratio per 5 kg/m2 and 95% confidence intervals")
+# ggsave("../images/empircal.pdf")
+
+
+
+## ---- bmi_hr ----
+
+hr_summary <- read.table("../../../../data-raw/bmi_hr.txt", he=T)
+hr_summary$x <- paste0(hr_summary$bmi_low, " - ", hr_summary$bmi_upp)
+
+ggplot(hr_summary, aes(x=x, y=hr, ymin=ci_low, ymax=ci_upp)) +
+geom_point() +
+geom_errorbar(width=0) +
+theme(axis.text.x=element_text(angle=90)) +
+labs(y="Hazard ratio", x="BMI")
+
+
+## ---- pd_hr ----
+
+pd_inc <- read.table("../../../../data-raw/pd_incidence.txt", he=T)
+pd_inc$age <- (pd_inc$age_low + pd_inc$age_upp) / 2
+pd_inc$n <- pd_inc$personyears / ((pd_inc$age_upp + pd_inc$age_low) / 2)
+pd_inc$p <- pd_inc$cases / pd_inc$n
+pd_inc$x <- with(pd_inc, paste0(age_low, " - ", age_upp))
+
+ggplot(pd_inc, aes(x=x, y=p)) +
+geom_point() +
+theme(axis.text.x=element_text(angle=90)) +
+labs(y="p(PD diagnosis)", x="Age range")
 
 
 ## ---- example_simulation ----
 
-source("~/repo/mr_frailty/R/functions.R")
+source("../../../../R/functions.R")
 
 pd_incidence <- function(age, ...)
 {
-	pd_inc <- read.table("~/repo/mr_frailty/data-raw/pd_incidence.txt", he=T)
+	pd_inc <- read.table("../../../../data-raw/pd_incidence.txt", he=T)
 	pd_inc$age <- (pd_inc$age_low + pd_inc$age_upp) / 2
 	pd_inc$n <- pd_inc$personyears / ((pd_inc$age_upp + pd_inc$age_low) / 2)
 	pd_inc$p <- pd_inc$cases / pd_inc$n
@@ -97,7 +125,7 @@ pd_incidence <- function(age, ...)
 
 bmi_survival <- function(age, bmi)
 {
-	hr_summary <- read.table("~/repo/mr_frailty/data-raw/bmi_hr.txt", he=T)
+	hr_summary <- read.table("../../../../data-raw/bmi_hr.txt", he=T)
 	hr_summary$lhr <- log(hr_summary$hr)
 	hr_summary$lhr_se <- (log(hr_summary$ci_upp) - log(hr_summary$ci_low)) / 3.92
 	
@@ -120,9 +148,9 @@ bmi_survival <- function(age, bmi)
 
 
 set.seed(12)
-demog <- read.csv("~/repo/mr_frailty/data-raw/pd_demographics.csv")
+demog <- read.csv("../../../../data-raw/pd_demographics.csv")
 age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
-bmi_snps <- read.table("~/repo/mr_frailty/data-raw/bmi_2015_clumped.txt", he=T)
+bmi_snps <- read.table("../../../../data-raw/bmi_2015_clumped.txt", he=T)
 bmi_snps$b <- bmi_snps$b
 bmi_snps_mean <- 25
 bmi_snps_sd <- 4.18
@@ -154,6 +182,49 @@ plot_quantiles(exposure = dat$age, outcome = dat$alive, ylab = "Mortality", xlab
 plot_quantiles(exposure = dat$bmi, outcome = dat$cc, ylab = "PD risk", xlab="BMI", exposure_breaks=10)
 
 
+## ---- baseline_gm ----
+
+d <- data.frame(age=40:100)
+d$survival <- survival <- (1 - gompertz_makeham_cdf(d$age))
+qplot(data=d, x=age, y=survival, geom="line")
 
 
 
+## ---- example_mr ----
+
+a <- summary(glm(cc ~ bmi, dat[index,], family="binomial"))
+b <- summary(systemfit(cc ~ bmi, "2SLS", inst = ~ grs, data = dat[index,]))
+
+ex <- as.data.frame(rbind(
+	coefficients(a)[2,c(1,2,4)],
+	coefficients(b)[2,c(1,2,4)]
+))
+
+names(ex) <- c("beta", "se", "pval")
+ex$method <- c("Obs assoc", "2SLS")
+
+
+ss <- get_summary_stats(dat, snps, index)
+mres <- do_mr(bmi_snps$b, ss$b, bmi_snps$se, ss$se)
+mres <- data.frame(beta = mres$b, se = mres$se, pval = mres$pval, method = mres$method)
+ex <- rbind(ex, subset(mres, method %in% c("Inverse variance weighted", "MR Egger")))
+
+ggplot(ex, aes(x = method, y = beta, ymin = beta+se*1.96, ymax = beta-se*1.96)) +
+geom_point() +
+geom_errorbar(width=0) +
+coord_flip() +
+labs(x="Method", y = "Estimate (log[OR] change per kg/m2")
+
+
+## ---- nalls_age_dist ----
+
+demog <- read.csv("../../../../data-raw/pd_demographics.csv")
+age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
+names(age_summary) <- c("Sample size", "Mean age", "SD", "Case/control")
+
+
+## ---- simulated_age_dist ----
+
+ggplot(dat[index,], aes(x=age)) +
+geom_density(alpha=0.2, aes(y=..count.., fill=factor(cc))) +
+labs(fill="PD status")
