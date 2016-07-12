@@ -1,0 +1,94 @@
+---
+title: Simulations to assess the contribution of survival bias to protective associations of body mass index and Parkinson's disease
+date: "`r Sys.Date()`"
+output: 
+  word_document
+bibliography: supp_mat_bmi_pd.bib
+---
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE, fig.path = "images/")
+read_chunk("../scripts/analysis.R")
+```
+
+```{r, echo=FALSE}
+suppressWarnings(suppressPackageStartupMessages(library(dplyr)))
+suppressWarnings(suppressPackageStartupMessages(library(ggplot2)))
+suppressWarnings(suppressPackageStartupMessages(library(pander)))
+suppressWarnings(suppressPackageStartupMessages(library(knitr)))
+suppressWarnings(suppressPackageStartupMessages(library(reshape2)))
+suppressWarnings(suppressPackageStartupMessages(library(sn)))
+```
+
+```{r example_simulation }
+
+```
+
+
+## Simulation strategy
+
+We construct a model whereby Parkinson's disease (PD) is not biologically related to body mass index (BMI), but BMI is associated with mortality, and PD is associated with age
+
+```
+BMI ~ snp(s)
+mortality ~ age + BMI
+PD ~ age
+```
+
+We simulated a large population ($n=500000$) where each individual has 58 BMI associated SNPs [@Locke2015]  (using only LD independent SNPs identified in Europeans). PD status, age values, BMI values, and alive/dead status are also simulated.
+
+Age values are generated to match the reported age distributions in [@Nalls2014]. BMI SNPs are generated as a function of their allele frequencies, such that for individual $i$ at SNP $j$ their genotype value is $g_{ij} ~ Binom(2, p_{j})$ where $p_{j}$ is the allele frequency of SNP $j$. The BMI values are a function of the BMI SNPs, such that
+
+$$
+x_{i} = \sum g_{ij} \beta_{j} + e_{j}
+$$
+
+where $e_{j} \sim N(0, V_E)$, where the genetic variance $V_G = \sum 2p_{j}(1-p_{j})\beta_j^2$ and residual variance $V_E = V_P - V_G$. The phenotypic variance, $V_P$, is the variance of BMI that was used to obtain the effect sizes.
+
+PD status was simulated as a function of age, based on age related incidence obtained from [@Driver2009], such that the distribution of simulated age stratified by PD follows the following distributions:
+
+```{r simulated_age_dist }
+
+```
+
+Alive/dead status was modelled as a function of age and BMI values. The baseline survival function was generated from the Gompertz-Makeham law of mortality, with age related hazard function
+
+$$
+h(t) = a \exp(bt) + \lambda
+$$
+
+which has CDF
+
+$$
+F(t) = 1 - \exp(-\lambda t-\frac{a}{b}(e^{b t}-1))
+$$
+
+giving the baseline survival function:
+
+$$
+S_{b}(t) = 1 - F(t) = -\exp(-\lambda t-\frac{a}{b}(e^{b t}-1))
+$$
+
+The influence of BMI on survival is then incorporated into the full survival model as
+
+$$
+S(t) = S_{b}(t)^{w(x)}
+$$
+
+where $x$ is the BMI value and $w(x)$ is a function that uses external data to relate BMI with mortality. Following [@BerringtondeGonzalez2010], a J-shaped relationship between BMI and hazard ratios was simulated. The influence of BMI on the survival function is shown here, where the curves are the survival functions of quartiles of BMI values:
+
+
+```{r plot_sim_mort_age_bmi }
+
+# Plot of bmi survival
+
+```
+
+Once these simulated data are generated, only 'alive' individuals are retained, and individuals are then selected for MR analysis. 13,708 PD individuals and 95,282 non-PD individuals are sampled randomly, and two sample MR analysis is applied. 
+
+This procedure is repeated 1000 times to obtain an empirical distribution of frailty effects for the given parameters.
+
+
+
+## References
