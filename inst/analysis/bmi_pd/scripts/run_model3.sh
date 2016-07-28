@@ -4,7 +4,7 @@
 #PBS -o job_reports/bmi_pd-output
 #PBS -e job_reports/bmi_pd-error
 #PBS -l walltime=4:00:00
-#PBS -t 1-100
+#PBS -t 1-10
 #PBS -l nodes=1:ppn=2
 #PBS -S /bin/bash
 
@@ -18,7 +18,7 @@ if [ -n "${1}" ]; then
 fi
 
 i=${PBS_ARRAYID}
-splits=10
+splits=100
 outdir="${HOME}/repo/mr_frailty/inst/analysis/bmi_pd/scratch3"
 
 R --no-save --args ${i} ${splits} ${outdir} < ${HOME}/repo/mr_frailty/inst/analysis/bmi_pd/scripts/model3.R
