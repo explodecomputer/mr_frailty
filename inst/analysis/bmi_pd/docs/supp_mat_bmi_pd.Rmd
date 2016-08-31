@@ -36,7 +36,7 @@ mortality ~ age + BMI
 PD ~ age
 ```
 
-We simulated a large population ($n=500000$) where each individual has 58 BMI associated SNPs [@Locke2015]  (using only LD independent SNPs identified in Europeans). PD status, age values, BMI values, and alive/dead status are also simulated.
+We simulated a large population ($n=500000$) where each individual has alleles at 77 BMI associated SNPs [@Locke2015]  (using only LD independent SNPs out of the reported 97, r-square cutoff 0.001 within 10Mb windows). PD status, age values, BMI values, and alive/dead status are also simulated.
 
 Age values are generated to match the reported age distributions in [@Nalls2014]. BMI SNPs are generated as a function of their allele frequencies, such that for individual $i$ at SNP $j$ their genotype value is $g_{ij} ~ Binom(2, p_{j})$ where $p_{j}$ is the allele frequency of SNP $j$. The BMI values are a function of the BMI SNPs, such that
 

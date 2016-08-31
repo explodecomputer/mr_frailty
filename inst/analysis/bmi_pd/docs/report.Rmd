@@ -23,6 +23,10 @@ suppressPackageStartupMessages(library(reshape2))
 suppressPackageStartupMessages(library(sn))
 ```
 
+```{r setup}
+
+```
+
 ```{r example_simulation }
 
 ```
@@ -51,7 +55,7 @@ mortality ~ age + exposure
 outcome ~ age
 ```
 
-Simulate a large population ($n=500000$) where each individual has 66 BMI associated SNPs [@Locke2015]  (using only European, LD independent SNPs), PD status, age values, BMI values, and alive/dead status. Data looks like this (first 6 rows):
+Simulate a large population ($n=500000$) where each individual has alleles at 77 BMI associated SNPs [@Locke2015]  (using only European, LD independent SNPs), PD status, age values, BMI values, and alive/dead status. Data looks like this (first 6 rows):
 
 ```{r }
 

@@ -4,7 +4,7 @@ library(ggplot2)
 library(dplyr)
 library(systemfit)
 
-load("../results/model1.RData")
+load("../results/model3.RData")
 res1 <- res
 res1$model <- "model1"
 load("../results/model2.RData")
@@ -56,9 +56,9 @@ res_plot$beta2 <- exp(res_plot$beta * 5)
 dat_ci <- dplyr::group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta2), lower_ci=quantile(beta2, 0.05), upper_ci=quantile(beta2, 0.95))
 
 emp_dat <- data.frame(
-	b = c(0.79, 0.79, 1.00),
-	lower_ci = c(0.66, 0.38, 0.89),
-	upper_ci = c(0.96, 1.27, 1.12),
+	b = c(0.82, 0.76, 1.00),
+	lower_ci = c(0.69, 0.51, 0.89),
+	upper_ci = c(0.98, 1.14, 1.12),
 	test = c("IVW", "MR Egger", "Obs assoc"),
 	model = "Empirical"
 )
@@ -150,17 +150,17 @@ bmi_survival <- function(age, bmi)
 set.seed(12)
 demog <- read.csv("../../../../data-raw/pd_demographics.csv")
 age_summary <- get_age_summary(demog, "Cases", "Controls", "Case_age_mean", "Control_age_mean", "Case_age_sd", "Control_age_sd")
-bmi_snps <- read.table("../../../../data-raw/bmi_2015_clumped.txt", he=T)
-bmi_snps$b <- bmi_snps$b
+bmi_snps <- read.table("../../../../data-raw/locke_clumped_0.001.txt", he=T)
+bmi_snps$beta.exposure <- bmi_snps$beta.exposure
 bmi_snps_mean <- 25
 bmi_snps_sd <- 4.18
 
 dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
 dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
-snps <- simulate_snps(nrow(dat), bmi_snps$Freq1.Hapmap)
-dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$b * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd, 15, 60)
+snps <- simulate_snps(nrow(dat), bmi_snps$eaf.exposure)
+dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$beta.exposure * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd, 15, 60)
 dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
-dat$grs <- snps %*% bmi_snps$b
+dat$grs <- snps %*% bmi_snps$beta.exposure
 index <- sample_cases_controls(dat, age_summary)
 
 
@@ -205,7 +205,7 @@ ex$method <- c("Obs assoc", "2SLS")
 
 
 ss <- get_summary_stats(dat, snps, index)
-mres <- do_mr(bmi_snps$b, ss$b, bmi_snps$se, ss$se)
+mres <- do_mr(bmi_snps$beta.exposure, ss$b, bmi_snps$se.exposure, ss$se)
 mres <- data.frame(beta = mres$b, se = mres$se, pval = mres$pval, method = mres$method)
 ex <- rbind(ex, subset(mres, method %in% c("Inverse variance weighted", "MR Egger")))
 
