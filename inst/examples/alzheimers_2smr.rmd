@@ -1,0 +1,55 @@
+# Two Sample MR of traits on Alzheimer's disease
+
+Perform two-sample MR using 
+
+```{r }
+
+library(TwoSampleMR)
+sup <- read.csv("../../data-raw/journal.pmed.1001841.s014.csv")
+
+bp <- subset(sup, Exposure == "SBP")
+
+sbp_inst <- read_exposure_data("../../data-raw/sbp_inst.txt", sep="\t")
+sbp_inst <- subset(sbp_inst, SNP %in% bp$SNP)
+
+bp$beta <- log(bp$OR.Alzh.Dis)
+bp$se <- (log(bp$Upper.95.CI) - log(bp$Lower.95.CI)) / 3.92
+
+az <- format_data(
+	bp,
+	gene_col="Gene",
+	phenotype_col="Exposure",
+	type="outcome",
+	effect_allele_col="Trait.raising.allele",
+	other_allele_col="Other.allele",
+	eaf_col="Effect.allele.frequency.in.EPIC.InterAct",
+	pval_col="p.value"
+)
+
+
+dat <- harmonise_data(sbp_inst, az, action=1)
+m <- mr(dat)
+```
+
+
+blood pressure mean is 120 at age 40 and 140 at age 70, assume linear increase and sd of 6
+
+
+
+simulate ages
+
+
+exposure = age + snps
+mortality = age + exposure
+outcome = age
+
+age 
+
+
+
+
+
+rsq <- get_r_from_pn(dat$pval.exposure, dat$samplesize.exposure)^2
+
+
+```
