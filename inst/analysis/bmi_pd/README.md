@@ -24,3 +24,11 @@ This has a J-shaped association - both high and low BMI increase mortality
 BMI has 5 times increase on mortality if BMI > 27. This is a control model.
 
 
+## Model 3
+
+Model 1 performed again using the Locke SNPs
+
+
+## Model 4
+
+Using linear hazard ratio of 1.16 obtained from [Davey Smith et al 2009 BMJ](http://www.bmj.com/content/339/bmj.b5043). This uses the causal effect of BMI on mortality rather than the J-shaped observational effect.
