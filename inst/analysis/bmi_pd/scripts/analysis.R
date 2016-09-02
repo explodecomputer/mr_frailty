@@ -4,12 +4,12 @@ library(ggplot2)
 library(dplyr)
 library(systemfit)
 
-load("../results/model3.RData")
+load("../results/model4.RData")
 res1 <- res
 res1$model <- "model1"
 load("../results/model2.RData")
 res2 <- res
-res2$model <- "model2"
+res2$model <- "model4"
 res <- rbind(res1, res2)
 
 
@@ -66,7 +66,7 @@ emp_dat <- data.frame(
 dat_ci <- rbind(dat_ci, emp_dat)
 dat_ci <- subset(dat_ci, model != "model2")
 dat_ci$model <- as.factor(dat_ci$model)
-levels(dat_ci$model) <- c("Empirical results", "Frailty simulation")
+levels(dat_ci$model) <- c("Empirical results", "Frailty simulation (O)", "Frailty simulation (C)")
 
 ggplot(dat_ci, aes(y=b, x=model)) +
 geom_point() +
@@ -76,7 +76,7 @@ coord_flip() +
 scale_colour_brewer(type="qual") +
 theme_bw() +
 labs(x="", y="Odds ratio per 5 kg/m2 and 95% confidence intervals")
-# ggsave("../images/empircal.pdf")
+# ggsave("../images/empircal_model4.pdf")
 
 
 
