@@ -9,7 +9,7 @@ sup <- read.csv("../../data-raw/journal.pmed.1001841.s014.csv")
 
 bp <- subset(sup, Exposure == "SBP")
 
-sbp_inst <- read_exposure_data("../../data-raw/sbp_inst.txt", sep="\t")
+sbp_inst <- read_exposure_data("../../../../data-raw/sbp_inst.txt", sep="\t")
 sbp_inst <- subset(sbp_inst, SNP %in% bp$SNP)
 
 bp$beta <- log(bp$OR.Alzh.Dis)
@@ -53,3 +53,8 @@ rsq <- get_r_from_pn(dat$pval.exposure, dat$samplesize.exposure)^2
 
 
 ```
+
+
+demog <- read.table("../../../../data-raw/az_demographics.txtf")
+age_summary <- 
+

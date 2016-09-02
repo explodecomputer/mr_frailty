@@ -296,3 +296,41 @@ do_mr <- function(exposure_effects, outcome_effects, exposure_se, outcome_se)
 
 	return(mr(dat))
 }
+
+
+
+#' Simulation of the survival probability
+#'
+#' The simulation requires each individual has some probability of death.
+#' This is a function of age and some predictor, related by the Gompertz-Makeham
+#' cumulative density function.
+#'
+#' @param age Array of ages
+#' @param predictor Predicted values of independent influence on death
+#'
+#' @export
+#' @return Numeric array of survival probabilities
+simulate_survival_probability <- function(age, predictor)
+{
+	survival <- (1 - gompertz_makeham_cdf(age)) ^ predictor
+	return(survival)
+}
+
+
+# simulate_events <- function(survival)
+# {
+# 	return(rbinom(length(survival), 1, survival))
+# }
+
+
+
+# dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
+# dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
+# snps <- simulate_snps(nrow(dat), bmi_snps$eaf.exposure)
+# dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$beta.exposure * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd, lb=15,ub=60)
+# dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
+# dat$dead <- as.numeric(!dat$alive)
+# dat$grs <- snps %*% bmi_snps$beta.exposure
+
+
+
