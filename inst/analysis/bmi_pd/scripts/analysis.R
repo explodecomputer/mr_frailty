@@ -3,6 +3,7 @@
 library(ggplot2)
 library(dplyr)
 library(systemfit)
+library(Runuran)
 
 load("../results/model4.RData")
 res1 <- res
