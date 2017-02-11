@@ -7,11 +7,14 @@ library(Runuran)
 
 load("../results/model4.RData")
 res1 <- res
-res1$model <- "model1"
+res1$model <- "Causal BMI mortality"
 load("../results/model2.RData")
 res2 <- res
-res2$model <- "model4"
-res <- rbind(res1, res2)
+res2$model <- "Exaggerated BMI mortality"
+load("../results/model5.RData")
+res3 <- res
+res3$model <- "Causal BMI mortality + age"
+res <- rbind(res1, res2, res3)
 
 
 res_plot <- subset(res, test %in% c("2sls", "obs", "MR Egger", "Inverse variance weighted"))
@@ -26,11 +29,12 @@ mc_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=
 
 
 ggplot(subset(res_plot, test != "grs"), aes(x=beta)) +
-geom_density(aes(fill=model), alpha=0.2) +
+geom_density(aes(fill=model), alpha=0.8) +
 geom_vline(data=subset(mc_dat, test != "grs"), aes(xintercept=b, colour=model)) +
 geom_vline(xintercept=0, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
-scale_fill_brewer(type="qual")
+scale_fill_brewer(type="qual") +
+scale_colour_brewer(type="qual") 
 # ggsave("../images/method_comparison_both_models.pdf")
 
 
