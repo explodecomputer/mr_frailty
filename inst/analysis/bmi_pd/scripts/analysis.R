@@ -63,10 +63,10 @@ emp_dat <- data.frame(
 	model = "Empirical"
 )
 
-dat_ci <- rbind(dat_ci, emp_dat)
+dat_ci <- rbind(subset(dat_ci, model == "model4" & test != "2SLS"), emp_dat)
 dat_ci <- subset(dat_ci, model != "model2")
 dat_ci$model <- as.factor(dat_ci$model)
-levels(dat_ci$model) <- c("Empirical results", "Frailty simulation (O)", "Frailty simulation (C)")
+levels(dat_ci$model) <- c("Empirical results", "Frailty simulation")
 
 ggplot(dat_ci, aes(y=b, x=model)) +
 geom_point() +
@@ -77,7 +77,7 @@ scale_colour_brewer(type="qual") +
 theme_bw() +
 labs(x="", y="Odds ratio per 5 kg/m2 and 95% confidence intervals")
 # ggsave("../images/empircal_model4.pdf")
-
+ggsave("../images/empirical_model4.pdf")
 
 
 ## ---- bmi_hr ----

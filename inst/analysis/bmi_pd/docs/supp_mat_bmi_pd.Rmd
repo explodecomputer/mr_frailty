@@ -46,13 +46,7 @@ $$
 
 where $e_{j} \sim N(0, V_E)$, where the genetic variance $V_G = \sum 2p_{j}(1-p_{j})\beta_j^2$ and residual variance $V_E = V_P - V_G$. The phenotypic variance, $V_P$, is the variance of BMI that was used to obtain the effect sizes.
 
-PD status was simulated as a function of age, based on age related incidence obtained from [@Driver2009], such that the distribution of simulated age stratified by PD follows the following distributions:
-
-```{r simulated_age_dist }
-
-```
-
-Alive/dead status was modelled as a function of age and BMI values. The baseline survival function was generated from the Gompertz-Makeham law of mortality, with age related hazard function
+PD status was simulated as a function of age, based on age related incidence obtained from [@Driver2009]. Alive/dead status was modelled as a function of age and BMI values. The baseline survival function was generated from the Gompertz-Makeham law of mortality, with age related hazard function
 
 $$
 h(t) = a \exp(bt) + \lambda
@@ -76,16 +70,9 @@ $$
 S(t) = S_{b}(t)^{w(x)}
 $$
 
-where $x$ is the BMI value and $w(x)$ is a function that uses external data to relate BMI with mortality. Following [@BerringtondeGonzalez2010], a J-shaped relationship between BMI and hazard ratios was simulated. The influence of BMI on the survival function is shown here, where the curves are the survival functions of quartiles of BMI values:
+where $x$ is the BMI value and $w(x)$ is a function that uses external data to relate BMI with mortality. Following [@DaveySmith2009a], a causal effect on all-cause mortality hazard ratios of 1.16 per standard deviation increase in BMI was simulated.
 
-
-```{r plot_sim_mort_age_bmi }
-
-# Plot of bmi survival
-
-```
-
-Once these simulated data are generated, only 'alive' individuals are retained, and individuals are then selected for MR analysis. 13,708 PD individuals and 95,282 non-PD individuals are sampled randomly, and two sample MR analysis is applied. 
+Once these simulated data are generated, only 'alive' individuals are retained, and individuals are then selected for MR analysis. 13,708 PD individuals and 95,282 non-PD individuals are sampled based on the distribution of ages of cases and controls in the original PD GWAS [@Nalls2014], such that the mean age of the cases are 60.6 years old, and of controls are 53.1 years old. Finally, two sample MR analysis is applied to the selected individuals from these simulated data.
 
 This procedure is repeated 1000 times to obtain an empirical distribution of frailty effects for the given parameters.
 
