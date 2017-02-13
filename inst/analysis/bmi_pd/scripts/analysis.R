@@ -5,16 +5,27 @@ library(dplyr)
 library(systemfit)
 library(Runuran)
 
-load("../results/model4.RData")
+load("../results/model1.RData")
 res1 <- res
-res1$model <- "Causal BMI mortality"
+res1$model <- "model1"
+res1$modname <- "BMI ~ SNP; nonlinear"
 load("../results/model2.RData")
 res2 <- res
-res2$model <- "Exaggerated BMI mortality"
-load("../results/model5.RData")
+res2$model <- "model2"
+res2$modname <- "BMI ~ SNP; large frailty effect"
+load("../results/model3.RData")
 res3 <- res
-res3$model <- "Causal BMI mortality + age"
-res <- rbind(res1, res2, res3)
+res3$model <- "model3"
+res3$modname <- "BMI ~ SNP; not sure"
+load("../results/model4.RData")
+res4 <- res
+res4$model <- "model4"
+res4$modname <- "BMI ~ SNP; linear"
+load("../results/model5.RData")
+res5 <- res
+res5$model <- "model5"
+res5$modname <- "BMI ~ SNP + age; linear"
+res <- rbind(res1, res2, res3, res4, res5)
 
 
 res_plot <- subset(res, test %in% c("2sls", "obs", "MR Egger", "Inverse variance weighted"))
@@ -25,17 +36,30 @@ levels(res_plot$test) <- c("2SLS", "IVW", "MR Egger", "Obs assoc")
 
 ## ---- method_comparisons ----
 
-mc_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta))
+mc_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta), modname=first(modname))
 
 
-ggplot(subset(res_plot, test != "grs"), aes(x=beta)) +
-geom_density(aes(fill=model), alpha=0.8) +
-geom_vline(data=subset(mc_dat, test != "grs"), aes(xintercept=b, colour=model)) +
+ggplot(subset(res_plot), aes(x=beta)) +
+geom_density(aes(fill=modname), alpha=0.5) +
+geom_vline(data=subset(mc_dat), aes(xintercept=b, colour=modname)) +
 geom_vline(xintercept=0, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
 scale_fill_brewer(type="qual") +
 scale_colour_brewer(type="qual") 
-# ggsave("../images/method_comparison_both_models.pdf")
+ggsave("../images/method_comparison_models_with_age.pdf")
+
+
+dc <- group_by(res_plot, model, test) %>%
+dplyr::summarise(b=exp(quantile(beta * 5, 0.5)), lci=exp(quantile(beta * 5, 0.05)), uci=exp(quantile(beta * 5, 0.95)))
+
+dc
+head(res_plot)
+
+ggplot(dc, aes(x=b, y=model)) +
+geom_point() +
+geom_errorbarh(aes(xmin=lci, xmax=uci), height=0) +
+facet_grid(test ~ .)
+
 
 
 ## ---- method_comparisons_model1 ----
@@ -56,6 +80,8 @@ labs(x="Estimate (log[OR] per kg/m2)")
 ## ---- empirical_results ----
 
 # convert res to OR change per 5 kg/m2
+
+res_plot <- subset(res_plot, model != "model5")
 res_plot$beta2 <- exp(res_plot$beta * 5)
 
 dat_ci <- dplyr::group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta2), lower_ci=quantile(beta2, 0.05), upper_ci=quantile(beta2, 0.95))
@@ -68,7 +94,7 @@ emp_dat <- data.frame(
 	model = "Empirical"
 )
 
-dat_ci <- rbind(subset(dat_ci, model == "model4" & test != "2SLS"), emp_dat)
+dat_ci <- bind_rows(subset(dat_ci, model == "model4" & test != "2SLS"), emp_dat)
 dat_ci <- subset(dat_ci, model != "model2")
 dat_ci$model <- as.factor(dat_ci$model)
 levels(dat_ci$model) <- c("Empirical results", "Frailty simulation")
