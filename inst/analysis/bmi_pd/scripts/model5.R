@@ -85,7 +85,7 @@ main <- function()
 
 		# add age effect
 		dat$bmi <- dat$bmi + (dat$age - 40) * 0.2 - 0.0033 * (dat$age - 40)^2
-		# qplot(y=bmi, x=age, data=dat, geom="smooth")
+		# ggplot(aes(y=bmi, x=age), data=dat[sample(1:nrow(dat),10000),]) + geom_point() + geom_smooth(method="lm") + geom_smooth(colour="red")
 
 
 

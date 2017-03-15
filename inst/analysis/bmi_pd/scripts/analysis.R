@@ -20,11 +20,11 @@ res3$modname <- "BMI ~ SNP; not sure"
 load("../results/model4.RData")
 res4 <- res
 res4$model <- "model4"
-res4$modname <- "BMI ~ SNP; linear"
+res4$modname <- "BMI ~ SNP"
 load("../results/model5.RData")
 res5 <- res
 res5$model <- "model5"
-res5$modname <- "BMI ~ SNP + age; linear"
+res5$modname <- "BMI ~ SNP + age"
 res <- rbind(res1, res2, res3, res4, res5)
 
 
@@ -39,13 +39,14 @@ levels(res_plot$test) <- c("2SLS", "IVW", "MR Egger", "Obs assoc")
 mc_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta), modname=first(modname))
 
 
-ggplot(subset(res_plot), aes(x=beta)) +
+ggplot(subset(res_plot, model %in% c("model4", "model5") & test != "2SLS"), aes(x=exp(beta))) +
 geom_density(aes(fill=modname), alpha=0.5) +
-geom_vline(data=subset(mc_dat), aes(xintercept=b, colour=modname)) +
-geom_vline(xintercept=0, linetype="dashed") +
+geom_vline(data=subset(mc_dat, model %in% c("model4", "model5") & test != "2SLS"), aes(xintercept=exp(b), colour=modname)) +
+geom_vline(xintercept=1, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
 scale_fill_brewer(type="qual") +
-scale_colour_brewer(type="qual") 
+scale_colour_brewer(type="qual") +
+labs(x="Effect estimate", fill="Model", colour="Model")
 ggsave("../images/method_comparison_models_with_age.pdf")
 
 
