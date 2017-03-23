@@ -269,7 +269,7 @@ get_summary_stats <- function(dat, snps, index)
 	for(i in 1:ncol(s))
 	{
 		message(i)
-		mod <- summary(lm(d$cc ~ s[,i], family="binomial"))
+		mod <- summary(glm(d$cc ~ s[,i], family="binomial"))
 		b[i] <- coefficients(mod)[2,1]
 		se[i] <- coefficients(mod)[2,2]
 		pval[i] <- coefficients(mod)[2,4]
@@ -317,20 +317,117 @@ simulate_survival_probability <- function(age, predictor)
 }
 
 
-# simulate_events <- function(survival)
-# {
-# 	return(rbinom(length(survival), 1, survival))
-# }
+
+#' Simulate dataset
+#'
+#' Simulates a dataset with SNPs, case/control status, exposure trait, age, alive/dead status, polygenic risk score.
+#'
+#' @param age_summary Data frame output from \code{get_age_summary}
+#' @param snp_beta Array of SNP effect sizes
+#' @param snp_se Array of SNP standard errors
+#' @param snp_eaf Array of SNP effect allele frequencies
+#' @param exposure_mean Mean of the exposure
+#' @param exposure_sd Standard deviation of the exposure
+#' @param exposure_lb Lower bound of the exposure
+#' @param exposure_ub Upper bound of the exposure
+#' @param outcome_prevalence_function Function that relates age to case/control prevalence. Expects age as an input and returns a prevalence for every age value
+#' @param survival_function Function that relates the age and exposure to the survival probability. Takes a vector of ages and exposures (same lengths) and returns a vector of survival probabilities.
+#' @param min_age=40 Minimum age to simulate
+#' @param max_age=100 Maximum age to simulate
+#' @param sample_size_multiplier=5 How many times larger than age summary should the dataset be
+#'
+#' @export
+#' @return List of data frames - SNPs, Phenotype data, SNP effects
+simulate_data <- function(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb=-Inf, exposure_ub=Inf, outcome_prevalence_function, survival_function, min_age=40, max_age=100, sample_size_multiplier=5)
+{
+	dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=max_age, min_age=min_age, sample_size_multiplier=sample_size_multiplier)
+	dat$cc <- simulate_events(dat$age, NULL, outcome_prevalence_function)
+	snps <- simulate_snps(nrow(dat), snp_eaf)
+	dat$exposure <- simulate_exposure(nrow(dat), snps, snp_beta * exposure_sd, exposure_mean, exposure_sd, lb=exposure_lb, ub=exposure_ub)
+
+	dat$alive <- simulate_events(dat$age, dat$exposure, survival_function)
+	dat$dead <- as.numeric(!dat$alive)
+	dat$grs <- snps %*% snp_beta
+	eff <- data.frame(b=snp_beta, se=snp_se, eaf=snp_eaf)
+	return(list(dat=dat, snps=snps, eff=eff))
+}
 
 
+#' Perform MR and observational analysis on simulated data
+#'
+#' @param dat Output from \code{simulate_data}
+#' @param age_summary Output from \code{get_age_summary}
+#'
+#' @export
+#' @return Data frame of analysis results
+analyse_data <- function(dat, age_summary)
+{
+	require(systemfit)
+	snps <- dat$snps
+	eff <- dat$eff
+	dat <- dat$dat
+	index <- sample_cases_controls(dat, age_summary)
 
-# dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=100, min_age=40, sample_size_multiplier=4)
-# dat$cc <- simulate_events(dat$age, NULL, pd_incidence)
-# snps <- simulate_snps(nrow(dat), bmi_snps$eaf.exposure)
-# dat$bmi <- simulate_exposure(nrow(dat), snps, bmi_snps$beta.exposure * bmi_snps_sd, bmi_snps_mean, bmi_snps_sd, lb=15,ub=60)
-# dat$alive <- simulate_events(dat$age, dat$bmi, bmi_survival)
-# dat$dead <- as.numeric(!dat$alive)
-# dat$grs <- snps %*% bmi_snps$beta.exposure
+	a <- summary(glm(cc ~ exposure, dat[index,], family="binomial"))
+	b <- summary(glm(cc ~ grs, dat[index,], family="binomial"))
+	c <- summary(systemfit(cc ~ exposure, "2SLS", inst = ~ grs, data = dat[index,]))
+
+	l1 <- coefficients(a)[2,]
+	l2 <- coefficients(b)[2,]
+	l3 <- coefficients(c)[2,]
+	l <- as.data.frame(rbind(l1, l2, l3), stringsAsFactors=FALSE)
+	names(l) <- c("beta", "se", "tval", "pval")
+	l$test <- c("Observational", "GRS", "2SLS")
+
+	ss <- get_summary_stats(dat, snps, index)
+	mres <- do_mr(eff$b, ss$b, eff$se, ss$se)
+	l4 <- data.frame(beta = mres$b, se = mres$se, tval = NA, pval = mres$pval, test = mres$method)
+
+	l <- rbind(l, l4)
+	l <- subset(l, select=c(test, beta, se, pval))
+	return(l)
+}
 
 
+#' Run simulations
+#'
+#' Simulates data and performs analysis a number of times to return results from multiple runs
+#'
+#' @param sim_start First simulation number
+#' @param sim_end Last simulation number
+#' @param age_summary Data frame output from \code{get_age_summary}
+#' @param snp_beta Array of SNP effect sizes
+#' @param snp_se Array of SNP standard errors
+#' @param snp_eaf Array of SNP effect allele frequencies
+#' @param exposure_mean Mean of the exposure
+#' @param exposure_sd Standard deviation of the exposure
+#' @param exposure_lb Lower bound of the exposure
+#' @param exposure_ub Upper bound of the exposure
+#' @param outcome_prevalence_function Function that relates age to case/control prevalence. Expects age as an input and returns a prevalence for every age value
+#' @param survival_function Function that relates the age and exposure to the survival probability. Takes a vector of ages and exposures (same lengths) and returns a vector of survival probabilities.
+#' @param min_age=40 Minimum age to simulate
+#' @param max_age=100 Maximum age to simulate
+#' @param sample_size_multiplier=5 How many times larger than age summary should the dataset be
+#'
+#' @export
+#' @return Data frame of analysis results from multiple simulations
+run_simulations <- function(sim_start, sim_end, age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb, exposure_ub, outcome_prevalence_function, survival_function, min_age=40, max_age=100, sample_size_multiplier=5)
+{
+	require(dplyr)
+	res <- list()
+	sim <- sim_start:sim_end
+	nsim <- length(sim)
+	for (i in 1:nsim)
+	{
+		message(sim[i], " of ", sim_end)
+
+		dat <- simulate_data(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb, exposure_ub, outcome_prevalence_function, survival_function, min_age, max_age, sample_size_multiplier)
+
+		res[[i]] <- analyse_data(dat, age_summary)
+		res[[i]]$sim <- sim[i]
+
+	}
+	res <- bind_rows(res)
+	return(res)
+}
 
