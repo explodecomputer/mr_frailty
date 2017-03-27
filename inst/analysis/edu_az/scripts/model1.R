@@ -35,7 +35,7 @@ edu_snps <- read.csv("~/repo/mr_frailty/data-raw/EduYears_Alz_ResultsBySNP.csv")
 
 # Run simulations
 
-parameters <- expand.grid(sim = 1:100)
+parameters <- expand.grid(sim = 1:1000)
 
 
 # Parallel
