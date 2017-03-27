@@ -138,6 +138,22 @@ plot_quantiles <- function(exposure, outcome, exposure_breaks=10, mediator=NULL,
 }
 
 
+#' Plot of age distributions stratified by case control status
+#'
+#' @param d Output from \code{simulate_data}. Can be subsetted using \code{sample_cases_controls}.
+#'
+#' @export
+#' @return ggplot density plot
+plot_age_density <- function(d)
+{
+	dsum <- group_by(d, cc) %>% summarise(mage=mean(age), sage=sd(age))
+
+	p <- ggplot(subset(d, alive==1), aes(x=age)) +
+	geom_density(aes(fill=as.factor(cc)), alpha=0.2) +
+	geom_vline(data=dsum, aes(xintercept=mage, colour=as.factor(cc))) +
+	labs(x="Simulated age distribution for outcome GWAS", fill="Disease status", colour="Disease status")
+	return(p)
+}
 
 
 #' pool mean sd
@@ -238,7 +254,79 @@ get_age_summary <- function(demog, ncases, ncontrol, case_mean, control_mean, ca
 #'
 #' @export
 #' @return array
-sample_cases_controls <- function(dat, age_summary)
+sample_cases_controls <- function(dat, age_summary, min_age, max_age)
+{
+	age_summary$cc[is.na(age_summary$cc)] <- -100
+	idpool_cases <- which(dat$alive == 1 & dat$cc == 1)
+	idpool_controls <- which(dat$alive == 1 & dat$cc == 0)
+	stopifnot(length(idpool_cases) >= age_summary$gn[age_summary$cc == 1])
+	stopifnot(length(idpool_controls) >= age_summary$gn[age_summary$cc == 0])
+	# Create guide distribution
+	n <- 10000
+	nbreak <- 100
+	guide_cases <- urnorm(n, age_summary$gm[age_summary$cc==1], age_summary$gs[age_summary$cc==1], ub=max_age, lb=min_age)
+	guide_controls <- urnorm(n, age_summary$gm[age_summary$cc==0], age_summary$gs[age_summary$cc==0], ub=max_age, lb=min_age)
+
+	tot_age <- c(dat$age, guide_cases, guide_controls)
+	qtot_age <- cut(tot_age, nbreak)
+	dat$quant <- qtot_age[1:nrow(dat)]
+	qguide_cases <- qtot_age[nrow(dat) + 1:n]
+	qguide_controls <- qtot_age[nrow(dat) + n + 1:n]
+
+	cases_sampling <- as.data.frame(table(qguide_cases))
+	cases_sampling$n <- round(cases_sampling$Freq / n * age_summary$gn[age_summary$cc==1])
+	controls_sampling <- as.data.frame(table(qguide_controls))
+	controls_sampling$n <- round(controls_sampling$Freq / n * age_summary$gn[age_summary$cc==0])
+
+	l1 <- list()
+	l2 <- list()
+	for(i in 1:nbreak)
+	{
+		message(i)
+		ids_cases <- which(dat$quant == cases_sampling$qguide_cases[i] & dat$alive == 1 & dat$cc == 1)
+		ids_cases <- sample(ids_cases, min(cases_sampling$n[i], length(ids_cases)), replace=FALSE)
+		ids_controls <- which(dat$quant == controls_sampling$qguide_controls[i] & dat$alive == 1 & dat$cc == 0)
+		ids_controls <- sample(ids_controls, min(controls_sampling$n[i], length(ids_controls)), replace=FALSE)
+		l1[[i]] <- ids_cases
+		l2[[i]] <- ids_controls
+	}
+	ids_cases <- unlist(l1)
+	ids_controls <- unlist(l2)
+
+	if(length(ids_cases) < age_summary$gn[age_summary$cc==1])
+	{
+		cases_deficit <- age_summary$gn[age_summary$cc==1] - length(ids_cases)
+		warning("Not enough samples to obtain cases target distribution. Approximating...")
+		ids_cases <- c(ids_cases, sample(idpool_cases[! idpool_cases %in% ids_cases], cases_deficit, replace=FALSE))
+	}
+
+	if(length(ids_controls) < age_summary$gn[age_summary$cc==0])
+	{
+		controls_deficit <- age_summary$gn[age_summary$cc==0] - length(ids_controls)
+		warning("Not enough samples to obtain controls target distribution. Approximating...")
+		ids_controls <- c(ids_controls, sample(idpool_controls[! idpool_controls %in% ids_controls], controls_deficit, replace=FALSE))
+	}
+
+	stopifnot(length(ids_cases) == age_summary$gn[age_summary$cc==1])
+	stopifnot(length(ids_controls) == age_summary$gn[age_summary$cc==0])
+
+	message("Target distribution of cases: ",
+		age_summary$gm[age_summary$cc==1], " (", age_summary$gs[age_summary$cc==1], ")"
+	)
+	message("Sampled distribution of cases: ",
+		mean(dat$age[ids_cases]), " (", sd(dat$age[ids_cases]), ")"
+	)
+	message("Target distribution of controls: ",
+		age_summary$gm[age_summary$cc==0], " (", age_summary$gs[age_summary$cc==0], ")"
+	)
+	message("Sampled distribution of controls: ",
+		mean(dat$age[ids_controls]), " (", sd(dat$age[ids_controls]), ")"
+	)
+	return(c(ids_cases, ids_controls))
+}
+
+
+sample_cases_controls_deprecated <- function(dat, age_summary)
 {
 	dat$id <- 1:nrow(dat)
 	temp1 <- subset(dat, alive==1 & cc==1)
