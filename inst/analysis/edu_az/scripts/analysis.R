@@ -54,6 +54,7 @@ levels(res_plot$test) <- c("2SLS", "IVW", "MR Egger", "Obs assoc")
 
 mc_dat <- group_by(res_plot, test, model) %>% 
 	dplyr::summarise(
+		nsim = n(),
 		b=mean(beta), 
 		se=sd(beta)/sqrt(n()), 
 		modname=first(modname), 
@@ -67,9 +68,10 @@ ggplot(subset(res_plot, test != "2SLS"), aes(x=(beta))) +
 geom_density(aes(fill=modname), alpha=0.5) +
 geom_vline(data=subset(mc_dat, model %in% c("model4", "model5") & test != "2SLS"), aes(xintercept=(b), colour=modname)) +
 geom_vline(xintercept=0, linetype="dashed") +
-facet_grid(test ~ ., scale="free_y") +
+facet_wrap(~ test, scale="free") +
 scale_fill_brewer(type="qual") +
 scale_colour_brewer(type="qual") +
 labs(x="Effect estimate", fill="Model", colour="Model")
 
-mc_dat
+write.csv(subset(mc_dat, modname == modname[1], select=-c(modname, model)), file="../results/table.csv")
+
