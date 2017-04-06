@@ -68,13 +68,43 @@ facet_grid(test ~ .)
 mc1_dat <- group_by(res_plot, test, model) %>% dplyr::summarise(b=mean(beta), se=sd(beta)/n(), sd=sd(beta))
 mc1_dat$pval <- pnorm(abs(mc1_dat$b / mc1_dat$se), low=FALSE)
 
-ggplot(subset(res_plot, test != "grs" & model == "model1"), aes(x=beta)) +
+ggplot(subset(res_plot, ! test %in% c("grs", "2SLS") & model == "model1"), aes(x=exp(beta))) +
 geom_density(alpha=0.2) +
-geom_vline(data=subset(mc1_dat, test != "grs" & model == "model1"), aes(xintercept=b)) +
-geom_vline(xintercept=0, linetype="dashed") +
+geom_vline(data=subset(mc1_dat, ! test %in% c("grs", "2SLS") & model == "model1"), aes(xintercept=exp(b))) +
+geom_vline(xintercept=1, linetype="dashed") +
 facet_grid(test ~ ., scale="free_y") +
 scale_fill_brewer(type="qual") +
-labs(x="Estimate (log[OR] per kg/m2)")
+geom_point(data=emp_dat, aes(x=b, y=0)) +
+labs(x="Estimate (log[OR] per kg/m2)") +
+theme_bw()
+
+
+
+
+rp <- subset(res_plot, test %in% c("IVW") & model == "model4", select=c(beta, se, sim))
+rp$res <- "Simulated result for null model"
+rp$lower_ci <- exp(rp$beta - 1.96 * rp$se)
+rp$upper_ci <- exp(rp$beta + 1.96 * rp$se)
+rp$beta <- exp(rp$beta)
+rp <- rbind(rp, data.frame(se=NA, beta=0.82, sim=0, lower_ci=0.69, upper_ci=0.98, res="IVW estimate from real data"))
+
+rp <- rp[order(rp$beta),]
+rp$sim <- 1:nrow(rp)
+
+ggplot(rp, aes(x=beta, y=sim)) +
+geom_point(aes(colour=res)) +
+geom_errorbarh(aes(xmin=lower_ci, xmax=upper_ci, colour=res)) 
+
+emp_dat <- data.frame(
+	b = c(0.82, 0.76, 1.00),
+	lower_ci = c(0.69, 0.51, 0.89),
+	upper_ci = c(0.98, 1.14, 1.12),
+	test = c("IVW", "MR Egger", "Obs assoc"),
+	model = "Empirical"
+)
+
+
+
 # ggsave("../images/method_comparison_model1.pdf")
 
 
@@ -98,8 +128,8 @@ emp_dat <- data.frame(
 dat_ci <- bind_rows(subset(dat_ci, model == "model4" & test != "2SLS"), emp_dat)
 dat_ci <- subset(dat_ci, model != "model2")
 dat_ci$model <- as.factor(dat_ci$model)
-levels(dat_ci$model) <- c("Empirical results", "Frailty simulation")
-
+levels(dat_ci$model) <- c("True effect estimate,\nobtained from data", "Survival bias effect where \nBMI has no causal effect on PD,\nbased on 1000 simulations")
+dat_ci
 ggplot(dat_ci, aes(y=b, x=model)) +
 geom_point() +
 geom_errorbar(aes(ymin=lower_ci, ymax=upper_ci), width=0) +
