@@ -10,18 +10,6 @@ az_prevalence <- function(age, ...)
 	return(pred$y)
 }
 
-edu_survival <- function(age, edu)
-{
-	edu_sd <- sd(edu, na.rm=TRUE)
-	edu <- scale(edu)
-	eff <- log(1/0.96) / edu_sd
-	survival <- (1 - gompertz_makeham_cdf(age)) * exp(edu * eff)
-	survival[survival > 1] <- 1
-	survival[survival < 0] <- 0
-	return(survival)
-}
-
-
 # Get age distributions for cases and controls
 
 demog <- read.csv("~/repo/mr_frailty/data-raw/alz_gwas_ages.csv")
@@ -72,7 +60,7 @@ res <- run_simulations(
 	exposure_lb = 5,
 	exposure_ub = 30,
 	outcome_prevalence_function = az_prevalence,
-	survival_function = edu_survival,
+	or_exposure_mortality = 0.96,
 	min_age = 40,
 	max_age = 100,
 	sample_size_multiplier=11

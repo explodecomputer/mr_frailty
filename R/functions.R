@@ -67,14 +67,20 @@ simulate_exposure <- function(n, snps, snp_beta, exposure_mean, exposure_sd, lb=
 #'
 #' @param age <what param does>
 #' @param exposure <what param does>
-#' @param survival_function <what param does>
+#' @param or_exposure_mortality OR of exposure on mortality, per exposure_sd
+#' @param survival_function Function that relates the age and exposure to the survival probability. Takes a vector of ages and exposures (same lengths) and returns a vector of survival probabilities.
 #'
 #' @export
 #' @return vector
-simulate_events <- function(age, exposure, survival_function)
+simulate_events <- function(age, exposure, or_exposure_mortality=NULL, survival_function=NULL)
 {
 	n <- length(age)
-	survival <- survival_function(age, exposure)
+	if(is.null(or_exposure_mortality))
+	{
+		survival <- survival_function(age, exposure)
+	} else {
+		survival <- simulate_survival(age, exposure, or_exposure_mortality)
+	}
 	event <- rbinom(n, 1, survival)
 	return(event)
 }
@@ -405,6 +411,26 @@ simulate_survival_probability <- function(age, predictor)
 }
 
 
+#' Simple function to sample survival based on effect of an exposure and ages
+#'
+#' @param age Vector of ages of individuals
+#' @param exposure Vector of exposure values for individuals
+#' @param mortality_effect The OR of death for increasing levels the exposure, in the units of the exposure
+#'
+#' @export
+#' @return Vector of survival status for each individual
+simulate_survival <- function(age, exposure, mortality_effect)
+{
+	exposure_sd <- sd(exposure, na.rm=TRUE)
+	exposure <- scale(exposure)
+	eff <- log(1/mortality_effect) / exposure_sd
+	survival <- (1 - gompertz_makeham_cdf(age)) * exp(exposure * eff)
+	survival[survival > 1] <- 1
+	survival[survival < 0] <- 0
+	return(survival)
+}
+
+
 
 #' Simulate dataset
 #'
@@ -419,21 +445,21 @@ simulate_survival_probability <- function(age, predictor)
 #' @param exposure_lb Lower bound of the exposure
 #' @param exposure_ub Upper bound of the exposure
 #' @param outcome_prevalence_function Function that relates age to case/control prevalence. Expects age as an input and returns a prevalence for every age value
-#' @param survival_function Function that relates the age and exposure to the survival probability. Takes a vector of ages and exposures (same lengths) and returns a vector of survival probabilities.
+#' @param or_exposure_mortality OR of exposure on mortality, per exposure_sd
 #' @param min_age=40 Minimum age to simulate
 #' @param max_age=100 Maximum age to simulate
 #' @param sample_size_multiplier=5 How many times larger than age summary should the dataset be
 #'
 #' @export
 #' @return List of data frames - SNPs, Phenotype data, SNP effects
-simulate_data <- function(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb=-Inf, exposure_ub=Inf, outcome_prevalence_function, survival_function, min_age=40, max_age=100, sample_size_multiplier=5)
+simulate_data <- function(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb=-Inf, exposure_ub=Inf, outcome_prevalence_function, or_exposure_mortality, min_age=40, max_age=100, sample_size_multiplier=5)
 {
 	dat <- simulate_ages(age_summary$gn[3], age_summary$gm[3], age_summary$gs[3], max_age=max_age, min_age=min_age, sample_size_multiplier=sample_size_multiplier)
-	dat$cc <- simulate_events(dat$age, NULL, outcome_prevalence_function)
+	dat$cc <- simulate_events(dat$age, NULL, survival_function=outcome_prevalence_function)
 	snps <- simulate_snps(nrow(dat), snp_eaf)
 	dat$exposure <- simulate_exposure(nrow(dat), snps, snp_beta * exposure_sd, exposure_mean, exposure_sd, lb=exposure_lb, ub=exposure_ub)
 
-	dat$alive <- simulate_events(dat$age, dat$exposure, survival_function)
+	dat$alive <- simulate_events(dat$age, dat$exposure, or_exposure_mortality=or_exposure_mortality)
 	dat$dead <- as.numeric(!dat$alive)
 	dat$grs <- snps %*% snp_beta
 	eff <- data.frame(b=snp_beta, se=snp_se, eaf=snp_eaf)
@@ -448,13 +474,13 @@ simulate_data <- function(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean,
 #'
 #' @export
 #' @return Data frame of analysis results
-analyse_data <- function(dat, age_summary)
+analyse_data <- function(dat, age_summary, min_age, max_age)
 {
 	require(systemfit)
 	snps <- dat$snps
 	eff <- dat$eff
 	dat <- dat$dat
-	index <- sample_cases_controls(dat, age_summary)
+	index <- sample_cases_controls(dat, age_summary, min_age, max_age)
 
 	a <- summary(glm(cc ~ exposure, dat[index,], family="binomial"))
 	b <- summary(glm(cc ~ grs, dat[index,], family="binomial"))
@@ -492,14 +518,14 @@ analyse_data <- function(dat, age_summary)
 #' @param exposure_lb Lower bound of the exposure
 #' @param exposure_ub Upper bound of the exposure
 #' @param outcome_prevalence_function Function that relates age to case/control prevalence. Expects age as an input and returns a prevalence for every age value
-#' @param survival_function Function that relates the age and exposure to the survival probability. Takes a vector of ages and exposures (same lengths) and returns a vector of survival probabilities.
+#' @param or_exposure_mortality OR of exposure on mortality, per exposure_sd
 #' @param min_age=40 Minimum age to simulate
 #' @param max_age=100 Maximum age to simulate
 #' @param sample_size_multiplier=5 How many times larger than age summary should the dataset be
 #'
 #' @export
 #' @return Data frame of analysis results from multiple simulations
-run_simulations <- function(sim_start, sim_end, age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb, exposure_ub, outcome_prevalence_function, survival_function, min_age=40, max_age=100, sample_size_multiplier=5)
+run_simulations <- function(sim_start, sim_end, age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb, exposure_ub, outcome_prevalence_function, or_exposure_mortality, min_age=40, max_age=100, sample_size_multiplier=5)
 {
 	require(dplyr)
 	res <- list()
@@ -509,9 +535,9 @@ run_simulations <- function(sim_start, sim_end, age_summary, snp_beta, snp_se, s
 	{
 		message(sim[i], " of ", sim_end)
 
-		dat <- simulate_data(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb, exposure_ub, outcome_prevalence_function, survival_function, min_age, max_age, sample_size_multiplier)
+		dat <- simulate_data(age_summary, snp_beta, snp_se, snp_eaf, exposure_mean, exposure_sd, exposure_lb, exposure_ub, outcome_prevalence_function, or_exposure_mortality, min_age, max_age, sample_size_multiplier)
 
-		res[[i]] <- analyse_data(dat, age_summary)
+		res[[i]] <- analyse_data(dat, age_summary, min_age, max_age)
 		res[[i]]$sim <- sim[i]
 
 	}
